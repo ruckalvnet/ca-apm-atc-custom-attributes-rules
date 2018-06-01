@@ -1,0 +1,23 @@
+{
+  "rules": [
+    {
+      "name":"first rule as an example",
+      "lucene_query": "attributes.agent:/.*-agent-.*/",
+      "regex":{
+        "attribute":"agent",
+        "expression":"(.*)-agent-(.*)$"
+      },
+      "attributes": {
+        "applicationServer": "jvm-{0}",
+        "applicationPlatform": "platform-{1}"
+      }
+    },
+    {
+      "name":"second rule as an example",
+      "lucene_query":"(attributes.agentDomain:SuperDomain/testDomain AND attributes.agent:/.*test.*/)",
+      "attributes": {
+        "exampleAttribute": "exampleValue"
+      }
+    }
+  ]
+}
