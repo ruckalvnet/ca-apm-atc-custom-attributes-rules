@@ -84,7 +84,8 @@ def parse_regex_attribute(text, regex, attributes):
     r = re.compile(regex)
     pattributes = {}
     for key, value in attributes.iteritems():
-        pattributes[key] = value.format(*r.search(text).groups())
+        if value:
+            pattributes[key] = value.format(*r.search(text).groups())
     return pattributes
 
 
