@@ -3,13 +3,14 @@
     {
       "name":"first rule as an example",
       "lucene_query": "attributes.agent:/.*-agent-.*/",
-      "regex":{
-        "attribute":"agent",
-        "expression":"(.*)-agent-(.*)$"
-      },
+      "regex":[
+        { "attribute":"agent", "expression":"(.*)-agent-(.*)$" },
+        { "attribute":"hostname", "expression":"(.*)" }
+      ],
       "attributes": {
         "applicationServer": "jvm-{0}",
-        "applicationPlatform": "platform-{1}"
+        "applicationPlatform": "platform-{1}",
+        "customHost": "{2}"
       }
     },
     {

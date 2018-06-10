@@ -6,6 +6,7 @@ import requests
 from pprint import pformat
 import re
 import urllib3
+import copy
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -59,6 +60,10 @@ class ApmApi(object):
         update_payload = {'attributes': payload}
         logging.info("Updating vertex id {0} with attributes -> {1}".format(vertex_id, update_payload))
         response = requests.patch(url, json=update_payload, headers=self.headers, verify=False)
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            logging.debug(response.text)
         return response
 
 
@@ -78,14 +83,34 @@ def load_rules(json_file_path):
         return data
 
 
-def parse_regex_attribute(text, regex, attributes):
-    """Replace attributes values with variables if needed"""
-    logging.debug("{0} -> {1} -> {2}".format(text, regex, attributes))
-    r = re.compile(regex)
+def regex_replace_attributes(vertex_attrs, regex_expressions, new_attrs):
+    """Replace new attributes values with variables if needed"""
+    logging.debug("regex replace data: -> attributes: {0} \n-> regex expressions: {1} \n-> new attributes: {2}".format(
+        pformat(vertex_attrs), pformat(regex_expressions), pformat(new_attrs)))
+    format_groups = ()
+    for rule in regex_expressions:
+        r = re.compile(rule['expression'])
+        attr = vertex_attrs[rule['attribute']]
+        format_groups = format_groups + r.search(attr).groups()
+
     pattributes = {}
-    for key, value in attributes.iteritems():
-        if value:
-            pattributes[key] = value.format(*r.search(text).groups())
+    for key, value in new_attrs.iteritems():
+        if value is not None:
+            pattributes[key] = value.format(*format_groups)
+        else:
+            pattributes[key] = None
+
+    return pattributes
+
+
+def vertex_needs_update(vertex_attrs, new_attrs):
+    """remove attributes that already been set or deleted"""
+    pattributes = copy.deepcopy(new_attrs)
+    for key in new_attrs.keys():
+        if (key in vertex_attrs and vertex_attrs[key] == new_attrs[key]) or \
+                (key not in vertex_attrs and new_attrs[key] is None):
+            del pattributes[key]
+
     return pattributes
 
 
@@ -95,16 +120,29 @@ def main():
     init_logging(args.verbose_level)
     data = load_rules(args.rules)
     apm_api = ApmApi(args.rest_url, args.api_token)
+    count = 0
     for rule in data['rules']:
         logging.info("Executing rule with name: {0}".format(rule['name']))
         vertex_list = apm_api.get_vertex_list(rule['lucene_query'])
         for vertex in vertex_list:
             attr = rule['attributes']
             if 'regex' in rule:
-                attr = parse_regex_attribute(vertex['attributes'][rule['regex']['attribute']],
-                                             rule['regex']['expression'],
-                                             attr)
-            apm_api.update_vertex(vertex['id'], attr)
+                try:
+                    attr = regex_replace_attributes(vertex['attributes'], rule['regex'], rule['attributes'])
+                except KeyError as err:
+                    logging.warn("Problem with key in this vertex: {0} \n-> rule: {1} \n-> KeyError: {2}".format(
+                        pformat(vertex),
+                        pformat(rule),
+                        err))
+                    continue
+            fattrs = vertex_needs_update(vertex['attributes'], attr)
+            if fattrs:
+                apm_api.update_vertex(vertex['id'], fattrs)
+                count += 1
+            else:
+                logging.debug("Vertex id {0} already updated with attributes: {1}".format(vertex['id'], attr))
+
+    logging.info("Updated vertex count: {0}".format(count))
 
 
 if __name__ == '__main__':

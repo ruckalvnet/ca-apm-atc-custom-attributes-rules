@@ -41,15 +41,18 @@ JSON Rules file explained (rules.json):
     {
       "name":"<mandatory - just a description and identifier for the rule. Not used by application>",
       "lucene_query": "<mandatory - filtering vertex list with Lucene syntax (https://lucene.apache.org/core/4_7_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html)>",
-      "regex":{           <- optional - if needed capture substring from vertex attribute with regex expression >
+      "regex":[{           <- optional - if needed capture substring from vertex attribute with regex expression >
         "attribute":"agent",
         "expression":"(.*)-agent-(.*)$"
       },
+      { "attribute":"hostname", "expression": "(.*) }
+      ],
       "attributes": {                           <- mandatory - define attributes to be updated with this rule. >
         "applicationServer": "jvm-{0}",         <- you can replace variable {0} with the first match in regex >
-        "applicationPlatform": "platform-{1}"   <- you can replace variable {1} with the second match in regex >
-      }                                         <  if the attribute value is set to null (without quotes), the                     
-    },                                              attributed is deleted from ATC >            
+        "applicationPlatform": "platform-{1}",  <- you can replace variable {1} with the second match in regex >
+        "customHostname": "{2}"                 <  if the attribute value is set to null (without quotes), the 
+      }                                            attributed is deleted from ATC >                      
+    },                                                         
     {
       "name":"second rule as an example",
       "lucene_query":"(attributes.agentDomain:SuperDomain/testDomain AND attributes.agent:/.*test.*/)",
@@ -71,5 +74,5 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENCE) file for details
+This project is licensed under the Apache License Version 2.0 - see the [LICENSE](LICENSE) file for details
 
