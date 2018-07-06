@@ -39,12 +39,13 @@ class ApmApi(object):
         self.auth_token = auth_token
         self.headers = {
             'Content-type': 'application/hal+json;charset=utf-8',
-            'Authorization': 'Bearer {}'.format(self.auth_token)
+            'Authorization': 'Bearer {0}'.format(self.auth_token)
         }
 
-    def get_vertex_list(self, lucene_query):
-        """Get a vertex list base on lucene query"""
-        response = requests.get('{0}/vertex?q={1}'.format(self.rest_url, lucene_query),
+    def get_vertex_list(self, query):
+        """Get a vertex list base on APM query"""
+        response = requests.post('{0}/graph/vertex'.format(self.rest_url),
+                                json=query,
                                 headers=self.headers, verify=False)
         vertex_list = response.json()['_embedded']['vertex']
         logging.debug(pformat(vertex_list))
@@ -87,11 +88,14 @@ def regex_replace_attributes(vertex_attrs, regex_expressions, new_attrs):
     """Replace new attributes values with variables if needed"""
     logging.debug("regex replace data: -> attributes: {0} \n-> regex expressions: {1} \n-> new attributes: {2}".format(
         pformat(vertex_attrs), pformat(regex_expressions), pformat(new_attrs)))
+
     format_groups = ()
     for rule in regex_expressions:
         r = re.compile(rule['expression'])
         attr = vertex_attrs[rule['attribute']]
-        format_groups = format_groups + r.search(attr).groups()
+        if len(attr) > 1:
+            logging.warn("Regex rule supports only one value (first will be used), but found {0}={1}".format(rule['attribute'], pformat(attr)))
+        format_groups = format_groups + r.search(attr[0]).groups()
 
     pattributes = {}
     for key, value in new_attrs.iteritems():
@@ -107,7 +111,7 @@ def vertex_needs_update(vertex_attrs, new_attrs):
     """remove attributes that already been set or deleted"""
     pattributes = copy.deepcopy(new_attrs)
     for key in new_attrs.keys():
-        if (key in vertex_attrs and vertex_attrs[key] == new_attrs[key]) or \
+        if (key in vertex_attrs and vertex_attrs[key][0] == new_attrs[key]) or \
                 (key not in vertex_attrs and new_attrs[key] is None):
             del pattributes[key]
 
@@ -123,7 +127,7 @@ def main():
     count = 0
     for rule in data['rules']:
         logging.info("Executing rule with name: {0}".format(rule['name']))
-        vertex_list = apm_api.get_vertex_list(rule['lucene_query'])
+        vertex_list = apm_api.get_vertex_list(rule['query'])
         for vertex in vertex_list:
             attr = rule['attributes']
             if 'regex' in rule:

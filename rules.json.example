@@ -1,11 +1,32 @@
 {
   "rules": [
     {
-      "name":"first rule as an example",
-      "lucene_query": "attributes.agent:/.*-agent-.*/",
-      "regex":[
-        { "attribute":"agent", "expression":"(.*)-agent-(.*)$" },
-        { "attribute":"hostname", "expression":"(.*)" }
+      "name": "first rule as an example",
+      "query": {
+        "orItems": [
+          {
+            "andItems": [
+              {
+                "itemType": "attributeFilter",
+                "attributeName": "agent",
+                "attributeOperator": "MATCHES",
+                "values": [
+                  ".*-agent-.*"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "regex": [
+        {
+          "attribute": "agent",
+          "expression": "(.*)-agent-(.*)$"
+        },
+        {
+          "attribute": "hostname",
+          "expression": "(.*)"
+        }
       ],
       "attributes": {
         "applicationServer": "jvm-{0}",
@@ -14,8 +35,28 @@
       }
     },
     {
-      "name":"second rule as an example",
-      "lucene_query":"(attributes.agentDomain:SuperDomain/testDomain AND attributes.agent:/.*test.*/)",
+      "name": "second rule as an example",
+      "query": {
+        "includeStartPoint": false,
+        "orItems":[
+          {
+            "andItems":[
+              {
+                "itemType" : "attributeFilter",
+                "attributeName": "agentDomain",
+                "attributeOperator": "IN",
+                "values": [ "SuperDomain/testDomain" ]
+              },
+              {
+                "itemType" : "attributeFilter",
+                "attributeName": "agent",
+                "attributeOperator": "MATCHES",
+                "values": [ ".*test.*" ]
+              }
+            ]
+          }
+        ]
+      },
       "attributes": {
         "exampleAttribute": "exampleValue"
       }
